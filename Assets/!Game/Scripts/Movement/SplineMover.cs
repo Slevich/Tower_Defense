@@ -65,15 +65,13 @@ public class SplineMover : MonoBehaviour, IDependenciesInjection<EnemiesSystemDe
             movement = Target.AddComponent<SplineAnimate>();
         }
         
-        _movementObjects.Add(movement);
-
         if (_path != null)
         {
             movement.Container = _path;
             movement.Duration = _movementDurationInSeconds;
-            movement.Loop = SplineAnimate.LoopMode.Loop;
-            movement.PlayOnAwake = true;
-            movement.Restart(true);
+            movement.Loop = SplineAnimate.LoopMode.Once;
+            movement.PlayOnAwake = false;
+            movement.Play();
 
             Component splineMovementContainerComponent =
                 ComponentsSearcher.GetSingleComponentOfTypeFromObjectAndChildren(Target, typeof(SplineMovementContainer));
@@ -81,6 +79,8 @@ public class SplineMover : MonoBehaviour, IDependenciesInjection<EnemiesSystemDe
             if(splineMovementContainerComponent != null)
                 ((SplineMovementContainer)splineMovementContainerComponent).Animate = movement;
         }
+        
+        _movementObjects.Add(movement);
         
         if(!_inProgress)
             StartObservingTargets();
@@ -130,15 +130,19 @@ public class SplineMover : MonoBehaviour, IDependenciesInjection<EnemiesSystemDe
         if(Target == null)
             return;
         
-        if(!TryGetComponent<SplineAnimate>(out SplineAnimate animation))
+        Component splineAnimateComponent = ComponentsSearcher.GetSingleComponentOfTypeFromObjectAndChildren(Target, typeof(SplineAnimate));
+        
+        if (splineAnimateComponent == null)
             return;
         
+        SplineAnimate animation = (SplineAnimate)splineAnimateComponent;
         int removedIndex = _movementObjects.IndexOf(animation);
         
         if(removedIndex < 0)
             return;
         
         SplineAnimate movementAnimation = _movementObjects[removedIndex];
+        movementAnimation.Restart(false);
         movementAnimation.Pause();
         _movementObjects.RemoveAt(removedIndex);
 

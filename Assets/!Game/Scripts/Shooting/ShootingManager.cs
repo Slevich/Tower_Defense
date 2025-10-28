@@ -157,41 +157,43 @@ public class ShootingManager : MonoBehaviour, IDependenciesInjection<TowerDepend
             _movementSystem.AddTarget(Target);
     }
 
-    private Vector3 CalculateEnemyPredictedPosition()
+    private Vector3 CalculateEnemyPredictedPosition(int iterations = 5)
     {
-        if(_currentTarget == null)
+        if (_currentTarget == null)
             return Vector3.zero;
 
         Component enemyMovementComponent = ComponentsSearcher.GetSingleComponentOfTypeFromObjectAndChildren(_currentTarget, typeof(SplineMovementContainer));
-        
-        if(enemyMovementComponent == null)
+        if (enemyMovementComponent == null)
             return _currentTarget.transform.position;
 
         SplineMovementContainer splineMovement = (SplineMovementContainer)enemyMovementComponent;
         SplineAnimate animate = splineMovement.Animate;
-        
-        if(animate == null)
+        if (animate == null)
             return _currentTarget.transform.position;
-        
-        float enemySpeed = animate.MaxSpeed;
 
         Transform origin = _movementSystem.ReturnOrigin();
-        
-        if(origin == null)
+        if (origin == null)
             return _currentTarget.transform.position;
-        
-        Vector3 startPosition = origin.position;
-        Vector3 enemyPosition = _currentTarget.transform.position;
-        
+
         float projectileSpeed = _movementSystem.ReturnSpeed();
-        float flightTime = Vector3.Distance(startPosition, enemyPosition) / projectileSpeed;
-        
-        float currentSplineT = animate.NormalizedTime;
-        
+        if (projectileSpeed <= 0f)
+            return _currentTarget.transform.position;
+
         float splineLength = animate.Container.Spline.GetLength();
-        float deltaSplineT = (enemySpeed * flightTime) / splineLength;
+        float predictedT = animate.NormalizedTime;
         
-        float predictedT = Mathf.Clamp01(currentSplineT + deltaSplineT);
+        for (int i = 0; i < iterations; i++)
+        {
+            Vector3 predictedPos = animate.Container.Spline.EvaluatePosition(predictedT);
+            float distance = Vector3.Distance(origin.position, predictedPos);
+            float flightTime = distance / projectileSpeed;
+
+            float enemySpeed = animate.MaxSpeed;
+            float deltaT = (enemySpeed * flightTime) / splineLength;
+
+            predictedT = Mathf.Clamp01(animate.NormalizedTime + deltaT);
+        }
+
         return animate.Container.Spline.EvaluatePosition(predictedT);
     }
 
